@@ -296,20 +296,60 @@ Players.PlayerAdded:Connect(function() if tweenFrame.Visible then refreshTween()
 Players.PlayerRemoving:Connect(function() if tweenFrame.Visible then refreshTween() end end)
 
 -------------------------------------------------
--- Admin Log
+-- Admin Log Frame (with filters)
 -------------------------------------------------
 local logFrame = Instance.new("Frame", gui)
-logFrame.Size = UDim2.new(0, 300, 0, 300)
+logFrame.Size = UDim2.new(0, 350, 0, 350)
 logFrame.Position = UDim2.new(0, 700, 0.2, 0)
 logFrame.BackgroundColor3 = BG_COLOR
 logFrame.Visible = false
 makeDraggable(logFrame)
 Instance.new("UICorner", logFrame).CornerRadius = UDim.new(0, 8)
-createExitButton(logFrame, logFrame)
 
+-- Close button
+local exitLog = Instance.new("TextButton", logFrame)
+exitLog.Size = UDim2.new(0, 30, 0, 30)
+exitLog.Position = UDim2.new(1, -35, 0, 5)
+exitLog.Text = "X"
+exitLog.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+exitLog.TextColor3 = ERROR_COLOR
+exitLog.Font = Enum.Font.SourceSansBold
+exitLog.TextSize = 18
+exitLog.MouseButton1Click:Connect(function()
+	logFrame.Visible = false
+end)
+
+-- Filter buttons bar
+local filterBar = Instance.new("Frame", logFrame)
+filterBar.Size = UDim2.new(1, -10, 0, 35)
+filterBar.Position = UDim2.new(0, 5, 0, 5)
+filterBar.BackgroundTransparency = 1
+
+local filterLayout = Instance.new("UIListLayout", filterBar)
+filterLayout.FillDirection = Enum.FillDirection.Horizontal
+filterLayout.Padding = UDim.new(0, 5)
+
+local function createFilterBtn(name, color)
+	local btn = Instance.new("TextButton", filterBar)
+	btn.Size = UDim2.new(0, 80, 1, 0)
+	btn.BackgroundColor3 = BTN_COLOR
+	btn.TextColor3 = color or Color3.new(1,1,1)
+	btn.Text = name
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 14
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	return btn
+end
+
+local infoBtn = createFilterBtn("Info", Color3.fromRGB(200,200,200))
+local warnBtn = createFilterBtn("Warning", Color3.fromRGB(255,200,0))
+local errorBtn = createFilterBtn("Error", ERROR_COLOR)
+local clearBtn = createFilterBtn("Clear", Color3.fromRGB(255,255,255))
+
+-- Log list
 local scrolling = Instance.new("ScrollingFrame", logFrame)
-scrolling.Size = UDim2.new(1, -10, 1, -10)
-scrolling.Position = UDim2.new(0, 5, 0, 5)
+scrolling.Size = UDim2.new(1, -10, 1, -50)
+scrolling.Position = UDim2.new(0, 5, 0, 45)
 scrolling.CanvasSize = UDim2.new(0,0,0,0)
 scrolling.ScrollBarThickness = 5
 scrolling.BackgroundTransparency = 1
@@ -317,18 +357,46 @@ scrolling.BackgroundTransparency = 1
 local listLayout = Instance.new("UIListLayout", scrolling)
 listLayout.Padding = UDim.new(0, 2)
 
-LogService.MessageOut:Connect(function(msg, msgType)
-	local lbl = Instance.new("TextLabel", scrolling)
-	lbl.Size = UDim2.new(1, -5, 0, 20)
-	lbl.BackgroundTransparency = 1
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.Font = Enum.Font.Code
-	lbl.TextSize = 14
-	lbl.TextColor3 = msgType == Enum.MessageType.MessageError and ERROR_COLOR or Color3.new(1,1,1)
-	lbl.Text = msg
+-- Store logs for filtering
+local allLogs = {}
+
+local function refreshLogs(filterType)
+	for _, child in ipairs(scrolling:GetChildren()) do
+		if child:IsA("TextLabel") then child:Destroy() end
+	end
+	for _, log in ipairs(allLogs) do
+		if not filterType or log.Type == filterType then
+			local lbl = Instance.new("TextLabel", scrolling)
+			lbl.Size = UDim2.new(1, -5, 0, 20)
+			lbl.BackgroundTransparency = 1
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.Font = Enum.Font.Code
+			lbl.TextSize = 14
+			lbl.TextColor3 = (log.Type == Enum.MessageType.MessageError and ERROR_COLOR)
+				or (log.Type == Enum.MessageType.MessageWarning and Color3.fromRGB(255,200,0))
+				or Color3.new(1,1,1)
+			lbl.Text = log.Text
+		end
+	end
 	scrolling.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
+end
+
+-- Capture logs
+LogService.MessageOut:Connect(function(msg, msgType)
+	table.insert(allLogs, {Text=msg, Type=msgType})
+	refreshLogs() -- show immediately
 end)
 
+-- Filters
+infoBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageOutput) end)
+warnBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageWarning) end)
+errorBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageError) end)
+clearBtn.MouseButton1Click:Connect(function()
+	allLogs = {}
+	refreshLogs()
+end)
+
+-- Toggle open
 logBtn.MouseButton1Click:Connect(function()
 	logFrame.Visible = not logFrame.Visible
 end)
