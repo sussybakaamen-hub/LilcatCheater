@@ -626,13 +626,11 @@ end)
 -------------------------------------------------
 -- Explorer Frame
 -------------------------------------------------
-local explorerFrame = Instance.new("ScrollingFrame")
+local explorerFrame = Instance.new("Frame")
 explorerFrame.Size = UDim2.new(0, 400, 0, 400)
 explorerFrame.Position = UDim2.new(0, 1100, 0.2, 0)
 explorerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 explorerFrame.Visible = false
-explorerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-explorerFrame.ScrollBarThickness = 6
 explorerFrame.Parent = gui
 makeDraggable(explorerFrame)
 
@@ -640,17 +638,12 @@ local explorerCorner = Instance.new("UICorner")
 explorerCorner.CornerRadius = UDim.new(0, 8)
 explorerCorner.Parent = explorerFrame
 
-local explorerLayout = Instance.new("UIListLayout")
-explorerLayout.Padding = UDim.new(0, 2)
-explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-explorerLayout.Parent = explorerFrame
-
 createExitButton(explorerFrame, explorerFrame)
 
 -- Search Box
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -10, 0, 30)
-searchBox.Position = UDim2.new(0, 5, 0, 40)
+searchBox.Position = UDim2.new(0, 5, 0, 5)
 searchBox.PlaceholderText = "Search..."
 searchBox.Text = ""
 searchBox.ClearTextOnFocus = false
@@ -664,9 +657,24 @@ local searchCorner = Instance.new("UICorner")
 searchCorner.CornerRadius = UDim.new(0, 6)
 searchCorner.Parent = searchBox
 
+-- Scrollable content for tree
+local explorerScroll = Instance.new("ScrollingFrame")
+explorerScroll.Size = UDim2.new(1, -10, 1, -45)
+explorerScroll.Position = UDim2.new(0, 5, 0, 40)
+explorerScroll.BackgroundTransparency = 1
+explorerScroll.ScrollBarThickness = 6
+explorerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+explorerScroll.Parent = explorerFrame
+
+local explorerLayout = Instance.new("UIListLayout")
+explorerLayout.Padding = UDim.new(0, 2)
+explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+explorerLayout.Parent = explorerScroll
+
 -- Create Node Function
 local function createNode(parentUI, instance, depth)
     local container = Instance.new("Frame")
+    container.Name = "Node_" .. instance.Name
     container.Size = UDim2.new(1, -5, 0, 20)
     container.BackgroundTransparency = 1
     container.Parent = parentUI
@@ -682,7 +690,7 @@ local function createNode(parentUI, instance, depth)
     plusBtn.Parent = container
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -25 - depth * 20, 0, 20)
+    label.Size = UDim2.new(1, -30 - depth * 20, 0, 20)
     label.Position = UDim2.new(0, 25 + depth * 20, 0, 0)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -707,17 +715,16 @@ local function createNode(parentUI, instance, depth)
             expanded = false
         else
             -- Expand
-            pcall(function() -- Protect against errors when accessing children
+            pcall(function()
                 for _, child in ipairs(instance:GetChildren()) do
-                    table.insert(childrenFrames, createNode(container, child, depth + 1))
+                    table.insert(childrenFrames, createNode(parentUI, child, depth + 1))
                 end
             end)
             plusBtn.Text = "-"
             expanded = true
         end
-        
-        -- Update canvas size
-        explorerFrame.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
+
+        explorerScroll.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
     end)
 
     return container
@@ -725,21 +732,19 @@ end
 
 -- Refresh Tree Function
 local function refreshExplorerTree()
-    -- Clear existing nodes
-    for _, child in ipairs(explorerFrame:GetChildren()) do
-        if child:IsA("Frame") and child ~= searchBox then
+    for _, child in ipairs(explorerScroll:GetChildren()) do
+        if child:IsA("Frame") then
             child:Destroy()
         end
     end
 
-    -- Create root nodes
     pcall(function()
         for _, service in ipairs(game:GetChildren()) do
-            createNode(explorerFrame, service, 0)
+            createNode(explorerScroll, service, 0)
         end
     end)
 
-    explorerFrame.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
+    explorerScroll.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
 end
 
 explorerBtn.MouseButton1Click:Connect(function()
@@ -749,33 +754,15 @@ explorerBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Search functionality  
+-- Search functionality
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    if not explorerFrame.Visible then return end
-    
     local searchText = searchBox.Text:lower()
-    for _, child in ipairs(explorerFrame:GetChildren()) do
-        if child:IsA("Frame") and child.Name and child.Name:match("^Node_") then
+    for _, child in ipairs(explorerScroll:GetChildren()) do
+        if child:IsA("Frame") then
             local label = child:FindFirstChildOfClass("TextLabel")
             if label then
-                if searchText == "" then
-                    child.Visible = true
-                else
-                    child.Visible = label.Text:lower():find(searchText, 1, true) ~= nil
-                end
+                child.Visible = (searchText == "" or label.Text:lower():find(searchText, 1, true) ~= nil)
             end
-        end
-    end
-end)
-
--- Handle character respawning
-player.CharacterAdded:Connect(function()
-    if flying then
-        flying = false
-        flyToggle.Text = "Toggle Fly"
-        if flyConnection then
-            flyConnection:Disconnect()
-            flyConnection = nil
         end
     end
 end)
