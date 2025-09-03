@@ -318,16 +318,27 @@ local function refreshTween()
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
 			btn.MouseButton1Click:Connect(function()
-				if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-					local target = plr.Character.HumanoidRootPart
-					local tween = TweenService:Create(
-						hrp,
-						TweenInfo.new(2, Enum.EasingStyle.Linear),
-						{ CFrame = target.CFrame + Vector3.new(0, 3, 0) }
-					)
-					tween:Play()
-				end
-			end)
+	if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+		local target = plr.Character.HumanoidRootPart
+		local myHRP = hrp
+		if myHRP then
+			local distance = (myHRP.Position - target.Position).Magnitude
+			local travelTime = distance / 60 -- 60 studs per second
+
+			-- Minimum time so short hops aren't instant
+			if travelTime < 0.2 then
+				travelTime = 0.2
+			end
+
+			local tween = TweenService:Create(
+				myHRP,
+				TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
+				{ CFrame = target.CFrame + Vector3.new(0, 3, 0) }
+			)
+			tween:Play()
+		end
+	end
+end)
 		end
 	end
 end
