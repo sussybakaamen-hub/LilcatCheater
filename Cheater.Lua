@@ -10,6 +10,10 @@ local LogService = game:GetService("LogService")
 local player = Players.LocalPlayer
 
 -- GUI
+local oldgui = player:WaitForChild("PlayerGui"):FindFirstChild("LilcatCheat")
+if oldgui then
+oldgui:Destroy()
+end
 local gui = Instance.new("ScreenGui")
 gui.Name = "LilcatCheat"
 gui.ResetOnSpawn = false
