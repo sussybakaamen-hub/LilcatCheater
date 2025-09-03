@@ -267,7 +267,7 @@ Players.PlayerAdded:Connect(function(p)
 	end)
 end)
 -------------------------------------------------
--- Tween to Player
+-- Tween to Player (with proper ScrollingFrame)
 -------------------------------------------------
 local tweenFrame = Instance.new("Frame", gui)
 tweenFrame.Size = UDim2.new(0, 220, 0, 300)
@@ -278,20 +278,21 @@ makeDraggable(tweenFrame)
 Instance.new("UICorner", tweenFrame).CornerRadius = UDim.new(0, 8)
 createExitButton(tweenFrame, tweenFrame)
 
--- Scrolling frame
-local scroll = Instance.new("ScrollingFrame", tweenFrame)
+-- Scrolling frame inside tweenFrame
+local scroll = Instance.new("ScrollingFrame")
+scroll.Parent = tweenFrame
 scroll.Size = UDim2.new(1, -10, 1, -10)
 scroll.Position = UDim2.new(0, 5, 0, 5)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 6
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
--- Layout for buttons
+-- Layout
 local list = Instance.new("UIListLayout", scroll)
 list.Padding = UDim.new(0, 5)
 list.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Update CanvasSize whenever content changes
+-- Auto adjust scroll size
 list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 10)
 end)
@@ -304,8 +305,18 @@ local function refreshTween()
 
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= player then
-			local btn = createButton(plr.Name, scroll)
+			-- make sure button is parented to scroll
+			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, -5, 0, 40)
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Font = Enum.Font.SourceSansBold
+			btn.TextSize = 18
+			btn.Text = plr.Name
+			btn.Parent = scroll
+
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
 			btn.MouseButton1Click:Connect(function()
 				if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 					local target = plr.Character.HumanoidRootPart
