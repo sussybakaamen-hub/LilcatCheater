@@ -16,7 +16,6 @@ oldgui:Destroy()
 end
 local gui = Instance.new("ScreenGui")
 gui.Name = "LilcatCheat"
-gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Colors
