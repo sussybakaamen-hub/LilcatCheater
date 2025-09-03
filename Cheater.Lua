@@ -486,11 +486,11 @@ logBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- FULL PAGINATED EXPLORER
+-- LAZY LOADED EXPLORER (Studio-style)
 -------------------------------------------------
 local RunService = game:GetService("RunService")
 
--- colors (replace with your own if you have globals)
+-- colors
 local ERROR_COLOR = Color3.fromRGB(255,80,80)
 
 -------------------------------------------------
@@ -530,7 +530,7 @@ end)
 -- SEARCH BAR
 -------------------------------------------------
 local searchBox = Instance.new("TextBox", explorerFrame)
-searchBox.Size = UDim2.new(1, -120, 0, 30)
+searchBox.Size = UDim2.new(1, -10, 0, 30)
 searchBox.Position = UDim2.new(0, 5, 0, 40)
 searchBox.PlaceholderText = "Search..."
 searchBox.Text = ""
@@ -542,134 +542,98 @@ searchBox.TextSize = 14
 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
 
 -------------------------------------------------
--- SEARCH MODE TOGGLE
+-- HELPER: CREATE NODE
 -------------------------------------------------
-local searchMode = "Name"
-local searchModeBtn = Instance.new("TextButton", explorerFrame)
-searchModeBtn.Size = UDim2.new(0, 100, 0, 30)
-searchModeBtn.Position = UDim2.new(1, -105, 0, 40)
-searchModeBtn.Text = "Mode: Name"
-searchModeBtn.BackgroundColor3 = Color3.fromRGB(70,70,100)
-searchModeBtn.TextColor3 = Color3.new(1,1,1)
-searchModeBtn.Font = Enum.Font.SourceSansBold
-searchModeBtn.TextSize = 14
-Instance.new("UICorner", searchModeBtn).CornerRadius = UDim.new(0, 6)
+local function createNode(parentUI, instance, depth)
+	local container = Instance.new("Frame")
+	container.Size = UDim2.new(1, -5, 0, 20)
+	container.BackgroundTransparency = 1
+	container.Parent = parentUI
 
-searchModeBtn.MouseButton1Click:Connect(function()
-	if searchMode == "Name" then
-		searchMode = "Type"
-		searchModeBtn.Text = "Mode: Type"
-	else
-		searchMode = "Name"
-		searchModeBtn.Text = "Mode: Name"
-	end
-end)
+	local plusBtn = Instance.new("TextButton")
+	plusBtn.Size = UDim2.new(0, 20, 0, 20)
+	plusBtn.Position = UDim2.new(0, depth*20, 0, 0)
+	plusBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	plusBtn.Text = "+"
+	plusBtn.TextColor3 = Color3.new(1,1,1)
+	plusBtn.Font = Enum.Font.Code
+	plusBtn.TextSize = 14
+	plusBtn.Parent = container
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -25 - depth*20, 0, 20)
+	label.Position = UDim2.new(0, 25 + depth*20, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Font = Enum.Font.Code
+	label.TextSize = 14
+	label.TextColor3 = Color3.new(1,1,1)
+	label.Text = instance.Name .. " ["..instance.ClassName.."]"
+	label.Parent = container
+
+	-- track expansion
+	local expanded = false
+	local childrenFrames = {}
+
+	plusBtn.MouseButton1Click:Connect(function()
+		if expanded then
+			-- collapse: remove children
+			for _, f in ipairs(childrenFrames) do
+				f:Destroy()
+			end
+			childrenFrames = {}
+			plusBtn.Text = "+"
+			expanded = false
+		else
+			-- collapse any siblings at same depth (optional "one open at a time" rule)
+			for _, sibling in ipairs(parentUI:GetChildren()) do
+				if sibling ~= container and sibling:IsA("Frame") and sibling:FindFirstChild("ExpandedFlag") then
+					sibling:FindFirstChild("ExpandedFlag").Value = false
+					if sibling:FindFirstChild("ChildrenFolder") then
+						sibling:FindFirstChild("ChildrenFolder"):Destroy()
+					end
+					local b = sibling:FindFirstChildOfClass("TextButton")
+					if b then b.Text = "+" end
+				end
+			end
+
+			-- expand
+			local childrenFolder = Instance.new("Folder")
+			childrenFolder.Name = "ChildrenFolder"
+			childrenFolder.Parent = container
+			for _, child in ipairs(instance:GetChildren()) do
+				table.insert(childrenFrames, createNode(childrenFolder, child, depth+1))
+			end
+			plusBtn.Text = "-"
+			expanded = true
+		end
+	end)
+
+	local flag = Instance.new("BoolValue")
+	flag.Name = "ExpandedFlag"
+	flag.Value = false
+	flag.Parent = container
+
+	return container
+end
 
 -------------------------------------------------
--- PAGINATION SETTINGS
+-- REFRESH TREE
 -------------------------------------------------
-local PAGE_SIZE = 200
-local nodes = {}
-local pageIndex = 0
-local totalPages = 1
-
-local pageLabel -- page counter label
-
-local function clearExplorer()
+local function refreshTree()
+	-- clear old
 	for _, child in ipairs(explorerFrame:GetChildren()) do
-		if child:IsA("TextLabel") or child.Name == "PageBtn" or child.Name == "PageLabel" then
+		if child:IsA("Frame") and child ~= exitExplorer and child ~= searchBox then
 			child:Destroy()
 		end
 	end
-end
 
-local function collectNodes(filter)
-	nodes = {}
-	local function collect(instance, depth)
-		local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
-		if not filter or string.find(
-			(searchMode == "Name" and instance.Name or instance.ClassName):lower(),
-			filter:lower()
-		) then
-			table.insert(nodes, {depth = depth, text = text})
-		end
-		for _, child in ipairs(instance:GetChildren()) do
-			collect(child, depth+1)
-		end
+	-- collect root services (top-level game children)
+	for _, inst in ipairs(game:GetChildren()) do
+		createNode(explorerFrame, inst, 0)
 	end
-	collect(game, 0)
-	totalPages = math.max(1, math.ceil(#nodes / PAGE_SIZE))
-end
-
-local function renderPage()
-	clearExplorer()
-
-	local startIndex = pageIndex * PAGE_SIZE + 1
-	local endIndex = math.min(startIndex + PAGE_SIZE - 1, #nodes)
-
-	-- render nodes for this page
-	for i = startIndex, endIndex do
-		local node = nodes[i]
-		local lbl = Instance.new("TextLabel", explorerFrame)
-		lbl.Size = UDim2.new(1, -5, 0, 20)
-		lbl.BackgroundTransparency = 1
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.Font = Enum.Font.Code
-		lbl.TextSize = 14
-		lbl.TextColor3 = Color3.new(1,1,1)
-		lbl.Text = node.text
-	end
-
-	-- page controls
-	if pageIndex > 0 then
-		local prevBtn = Instance.new("TextButton", explorerFrame)
-		prevBtn.Name = "PageBtn"
-		prevBtn.Size = UDim2.new(0.5, -3, 0, 30)
-		prevBtn.Text = "< Prev"
-		prevBtn.BackgroundColor3 = Color3.fromRGB(60,80,60)
-		prevBtn.TextColor3 = Color3.new(1,1,1)
-		prevBtn.Font = Enum.Font.SourceSansBold
-		prevBtn.TextSize = 14
-		prevBtn.MouseButton1Click:Connect(function()
-			pageIndex -= 1
-			renderPage()
-		end)
-	end
-
-	if endIndex < #nodes then
-		local nextBtn = Instance.new("TextButton", explorerFrame)
-		nextBtn.Name = "PageBtn"
-		nextBtn.Size = UDim2.new(0.5, -3, 0, 30)
-		nextBtn.Position = UDim2.new(0.5, 3, 0, 0)
-		nextBtn.Text = "Next >"
-		nextBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
-		nextBtn.TextColor3 = Color3.new(1,1,1)
-		nextBtn.Font = Enum.Font.SourceSansBold
-		nextBtn.TextSize = 14
-		nextBtn.MouseButton1Click:Connect(function()
-			pageIndex += 1
-			renderPage()
-		end)
-	end
-
-	-- page counter
-	pageLabel = Instance.new("TextLabel", explorerFrame)
-	pageLabel.Name = "PageLabel"
-	pageLabel.Size = UDim2.new(1, -5, 0, 20)
-	pageLabel.BackgroundTransparency = 1
-	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
-	pageLabel.Font = Enum.Font.SourceSansBold
-	pageLabel.TextSize = 14
-	pageLabel.TextColor3 = Color3.new(1,1,1)
-	pageLabel.Text = string.format("Page %d / %d", pageIndex+1, totalPages)
 
 	explorerFrame.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y + 10)
-end
-
-local function refreshExplorer(filter)
-	collectNodes(filter)
-	pageIndex = 0
-	renderPage()
 end
 
 -------------------------------------------------
@@ -678,16 +642,24 @@ end
 explorerBtn.MouseButton1Click:Connect(function()
 	explorerFrame.Visible = not explorerFrame.Visible
 	if explorerFrame.Visible then
-		refreshExplorer(searchBox.Text)
+		refreshTree()
 	end
 end)
 
 -------------------------------------------------
--- SEARCH UPDATE
+-- SEARCH UPDATE (filters top-level only for now)
 -------------------------------------------------
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	if explorerFrame.Visible then
-		refreshExplorer(searchBox.Text)
+		local text = searchBox.Text:lower()
+		for _, child in ipairs(explorerFrame:GetChildren()) do
+			if child:IsA("Frame") then
+				local lbl = child:FindFirstChildOfClass("TextLabel")
+				if lbl then
+					child.Visible = text == "" or lbl.Text:lower():find(text, 1, true) ~= nil
+				end
+			end
+		end
 	end
 end)
 
