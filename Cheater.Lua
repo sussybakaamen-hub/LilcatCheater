@@ -1,10 +1,11 @@
--- Lilcat Cheat Utility Panel
+-- Lilcat Cheat Utility Panel + Admin Log
 -- Place in StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local LogService = game:GetService("LogService")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
@@ -17,16 +18,19 @@ local BTN_COLOR = Color3.fromRGB(50, 50, 50)
 local ACCENT_COLOR = Color3.fromRGB(85, 170, 255)
 local ERROR_COLOR = Color3.fromRGB(255, 80, 80)
 
+-- Helper for draggable frames
+local function makeDraggable(frame)
+	frame.Active = true
+	frame.Draggable = true
+end
+
 -- Main frame
 local mainFrame = Instance.new("Frame", gui)
 mainFrame.Size = UDim2.new(0, 220, 0, 320)
 mainFrame.Position = UDim2.new(0, 20, 0.2, 0)
 mainFrame.BackgroundColor3 = BG_COLOR
-mainFrame.Active = true
-mainFrame.Draggable = true
-
-local corner = Instance.new("UICorner", mainFrame)
-corner.CornerRadius = UDim.new(0, 8)
+makeDraggable(mainFrame)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
 -- Title bar
 local titleBar = Instance.new("TextLabel", mainFrame)
@@ -76,16 +80,30 @@ local flyBtn = createButton("Fly Mode")
 local espBtn = createButton("ESP (Names)")
 local trackBtn = createButton("Tracking (Studs)")
 local tweenBtn = createButton("Tween to Player")
+local logBtn = createButton("Admin Log")
 
 -------------------------------------------------
 -- Fly Mode Window
 -------------------------------------------------
 local flyFrame = Instance.new("Frame", gui)
-flyFrame.Size = UDim2.new(0, 220, 0, 140)
+flyFrame.Size = UDim2.new(0, 220, 0, 160)
 flyFrame.Position = UDim2.new(0, 260, 0.2, 0)
 flyFrame.BackgroundColor3 = BG_COLOR
 flyFrame.Visible = false
+makeDraggable(flyFrame)
 Instance.new("UICorner", flyFrame).CornerRadius = UDim.new(0, 8)
+
+local exitFly = Instance.new("TextButton", flyFrame)
+exitFly.Size = UDim2.new(0, 30, 0, 30)
+exitFly.Position = UDim2.new(1, -35, 0, 5)
+exitFly.Text = "X"
+exitFly.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+exitFly.TextColor3 = ERROR_COLOR
+exitFly.Font = Enum.Font.SourceSansBold
+exitFly.TextSize = 18
+exitFly.MouseButton1Click:Connect(function()
+	flyFrame.Visible = false
+end)
 
 local speedBox = Instance.new("TextBox", flyFrame)
 speedBox.Size = UDim2.new(1, -20, 0, 40)
@@ -96,10 +114,15 @@ speedBox.TextColor3 = Color3.new(1,1,1)
 speedBox.Font = Enum.Font.SourceSansBold
 speedBox.TextSize = 16
 
-local flyToggle = createButton("Toggle Fly")
-flyToggle.Parent = flyFrame
-flyToggle.Position = UDim2.new(0, 10, 0, 60)
+local flyToggle = Instance.new("TextButton", flyFrame)
 flyToggle.Size = UDim2.new(1, -20, 0, 40)
+flyToggle.Position = UDim2.new(0, 10, 0, 60)
+flyToggle.BackgroundColor3 = BTN_COLOR
+flyToggle.TextColor3 = Color3.new(1,1,1)
+flyToggle.Font = Enum.Font.SourceSansBold
+flyToggle.TextSize = 16
+flyToggle.Text = "Toggle Fly"
+Instance.new("UICorner", flyToggle).CornerRadius = UDim.new(0, 8)
 
 local flying = false
 local flySpeed = 50
@@ -150,114 +173,51 @@ flyBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- ESP & Tracking
+-- Admin Log Frame
 -------------------------------------------------
-local function createBillboard(plr, showDist)
-	if not plr.Character then return end
-	local head = plr.Character:FindFirstChild("Head")
-	if not head then return end
-	local old = head:FindFirstChild("ESPTag")
-	if old then old:Destroy() end
+local logFrame = Instance.new("Frame", gui)
+logFrame.Size = UDim2.new(0, 300, 0, 300)
+logFrame.Position = UDim2.new(0, 700, 0.2, 0)
+logFrame.BackgroundColor3 = BG_COLOR
+logFrame.Visible = false
+makeDraggable(logFrame)
+Instance.new("UICorner", logFrame).CornerRadius = UDim.new(0, 8)
 
-	local bb = Instance.new("BillboardGui", head)
-	bb.Name = "ESPTag"
-	bb.Size = UDim2.new(0,200,0,50)
-	bb.StudsOffset = Vector3.new(0,3,0)
-	bb.AlwaysOnTop = true
-	bb.Adornee = head
-
-	local lbl = Instance.new("TextLabel", bb)
-	lbl.Size = UDim2.new(1,0,1,0)
-	lbl.BackgroundTransparency=1
-	lbl.Font = Enum.Font.SourceSansBold
-	lbl.TextColor3 = Color3.new(1,0,0)
-	lbl.TextSize = 16
-	lbl.Text = plr.Name
-
-	if showDist then
-		RunService.RenderStepped:Connect(function()
-			if plr.Character and player.Character then
-				local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
-				local theirHRP = plr.Character:FindFirstChild("HumanoidRootPart")
-				if myHRP and theirHRP then
-					local dist = (myHRP.Position - theirHRP.Position).Magnitude
-					lbl.Text = plr.Name.." ["..math.floor(dist).." studs]"
-				end
-			end
-		end)
-	end
-end
-
-local function clearESP()
-	for _,p in ipairs(Players:GetPlayers()) do
-		if p.Character and p.Character:FindFirstChild("Head") then
-			local tag = p.Character.Head:FindFirstChild("ESPTag")
-			if tag then tag:Destroy() end
-		end
-	end
-end
-
-espBtn.MouseButton1Click:Connect(function()
-	clearESP()
-	for _,p in ipairs(Players:GetPlayers()) do
-		if p ~= player then
-			createBillboard(p,false)
-		end
-	end
+local exitLog = Instance.new("TextButton", logFrame)
+exitLog.Size = UDim2.new(0, 30, 0, 30)
+exitLog.Position = UDim2.new(1, -35, 0, 5)
+exitLog.Text = "X"
+exitLog.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+exitLog.TextColor3 = ERROR_COLOR
+exitLog.Font = Enum.Font.SourceSansBold
+exitLog.TextSize = 18
+exitLog.MouseButton1Click:Connect(function()
+	logFrame.Visible = false
 end)
 
-trackBtn.MouseButton1Click:Connect(function()
-	clearESP()
-	for _,p in ipairs(Players:GetPlayers()) do
-		if p ~= player then
-			createBillboard(p,true)
-		end
-	end
+local scrolling = Instance.new("ScrollingFrame", logFrame)
+scrolling.Size = UDim2.new(1, -10, 1, -10)
+scrolling.Position = UDim2.new(0, 5, 0, 5)
+scrolling.CanvasSize = UDim2.new(0,0,0,0)
+scrolling.ScrollBarThickness = 5
+scrolling.BackgroundTransparency = 1
+
+local listLayout = Instance.new("UIListLayout", scrolling)
+listLayout.Padding = UDim.new(0, 2)
+
+-- Add logs
+LogService.MessageOut:Connect(function(msg, msgType)
+	local lbl = Instance.new("TextLabel", scrolling)
+	lbl.Size = UDim2.new(1, -5, 0, 20)
+	lbl.BackgroundTransparency = 1
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Font = Enum.Font.Code
+	lbl.TextSize = 14
+	lbl.TextColor3 = msgType == Enum.MessageType.MessageError and ERROR_COLOR or Color3.new(1,1,1)
+	lbl.Text = msg
+	scrolling.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
 end)
 
--------------------------------------------------
--- Tween to Player
--------------------------------------------------
-local tweenFrame = Instance.new("Frame", gui)
-tweenFrame.Size = UDim2.new(0,220,0,300)
-tweenFrame.Position = UDim2.new(0,480,0.2,0)
-tweenFrame.BackgroundColor3 = BG_COLOR
-tweenFrame.Visible = false
-Instance.new("UICorner",tweenFrame).CornerRadius = UDim.new(0,8)
-
-local scroll = Instance.new("ScrollingFrame", tweenFrame)
-scroll.Size = UDim2.new(1,-10,1,-10)
-scroll.Position = UDim2.new(0,5,0,5)
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.BackgroundTransparency=1
-scroll.ScrollBarThickness=5
-
-local list = Instance.new("UIListLayout", scroll)
-list.Padding = UDim.new(0,5)
-
-local function refreshTween()
-	for _,c in ipairs(scroll:GetChildren()) do
-		if c:IsA("TextButton") then c:Destroy() end
-	end
-	for _,plr in ipairs(Players:GetPlayers()) do
-		if plr ~= player then
-			local btn = createButton(plr.Name)
-			btn.Parent = scroll
-			btn.MouseButton1Click:Connect(function()
-				if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-					local target = plr.Character.HumanoidRootPart
-					local tween = TweenService:Create(hrp, TweenInfo.new(2,Enum.EasingStyle.Linear),{CFrame=target.CFrame+Vector3.new(0,3,0)})
-					tween:Play()
-				end
-			end)
-		end
-	end
-end
-
-tweenBtn.MouseButton1Click:Connect(function()
-	tweenFrame.Visible = not tweenFrame.Visible
-	if tweenFrame.Visible then refreshTween() end
+logBtn.MouseButton1Click:Connect(function()
+	logFrame.Visible = not logFrame.Visible
 end)
-
-Players.PlayerAdded:Connect(function() if tweenFrame.Visible then refreshTween() end end)
-Players.PlayerRemoving:Connect(function() if tweenFrame.Visible then refreshTween() end end)
