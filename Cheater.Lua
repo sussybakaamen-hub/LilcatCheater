@@ -278,27 +278,42 @@ makeDraggable(tweenFrame)
 Instance.new("UICorner", tweenFrame).CornerRadius = UDim.new(0, 8)
 createExitButton(tweenFrame, tweenFrame)
 
+-- Scrolling frame
 local scroll = Instance.new("ScrollingFrame", tweenFrame)
 scroll.Size = UDim2.new(1, -10, 1, -10)
 scroll.Position = UDim2.new(0, 5, 0, 5)
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.BackgroundTransparency=1
-scroll.ScrollBarThickness=5
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 6
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
+-- Layout for buttons
 local list = Instance.new("UIListLayout", scroll)
-list.Padding = UDim.new(0,5)
+list.Padding = UDim.new(0, 5)
+list.SortOrder = Enum.SortOrder.LayoutOrder
 
+-- Update CanvasSize whenever content changes
+list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 10)
+end)
+
+-- Function to refresh list of players
 local function refreshTween()
-	for _,c in ipairs(scroll:GetChildren()) do
+	for _, c in ipairs(scroll:GetChildren()) do
 		if c:IsA("TextButton") then c:Destroy() end
 	end
-	for _,plr in ipairs(Players:GetPlayers()) do
+
+	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= player then
 			local btn = createButton(plr.Name, scroll)
+			btn.Size = UDim2.new(1, -5, 0, 40)
 			btn.MouseButton1Click:Connect(function()
 				if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 					local target = plr.Character.HumanoidRootPart
-					local tween = TweenService:Create(hrp, TweenInfo.new(2,Enum.EasingStyle.Linear),{CFrame=target.CFrame+Vector3.new(0,3,0)})
+					local tween = TweenService:Create(
+						hrp,
+						TweenInfo.new(2, Enum.EasingStyle.Linear),
+						{ CFrame = target.CFrame + Vector3.new(0, 3, 0) }
+					)
 					tween:Play()
 				end
 			end)
@@ -311,9 +326,13 @@ tweenBtn.MouseButton1Click:Connect(function()
 	if tweenFrame.Visible then refreshTween() end
 end)
 
-Players.PlayerAdded:Connect(function() if tweenFrame.Visible then refreshTween() end end)
-Players.PlayerRemoving:Connect(function() if tweenFrame.Visible then refreshTween() end end)
+Players.PlayerAdded:Connect(function()
+	if tweenFrame.Visible then refreshTween() end
+end)
 
+Players.PlayerRemoving:Connect(function()
+	if tweenFrame.Visible then refreshTween() end
+end)
 -------------------------------------------------
 -- Admin Log Frame (with filters)
 -------------------------------------------------
