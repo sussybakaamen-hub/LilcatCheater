@@ -1,4 +1,4 @@
--- Lilcat Cheat Utility Panel + Admin Log
+-- Lilcat Cheat Utility Panel (Rebuilt)
 -- Place in StarterPlayerScripts
 
 local Players = game:GetService("Players")
@@ -8,9 +8,12 @@ local UserInputService = game:GetService("UserInputService")
 local LogService = game:GetService("LogService")
 
 local player = Players.LocalPlayer
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+
+-- GUI
+local gui = Instance.new("ScreenGui")
 gui.Name = "LilcatCheat"
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Colors
 local BG_COLOR = Color3.fromRGB(30, 30, 30)
@@ -18,13 +21,42 @@ local BTN_COLOR = Color3.fromRGB(50, 50, 50)
 local ACCENT_COLOR = Color3.fromRGB(85, 170, 255)
 local ERROR_COLOR = Color3.fromRGB(255, 80, 80)
 
--- Helper for draggable frames
+-- Helpers
 local function makeDraggable(frame)
 	frame.Active = true
 	frame.Draggable = true
 end
 
--- Main frame
+local function createButton(name, parent)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 40)
+	btn.BackgroundColor3 = BTN_COLOR
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Text = name
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 16
+	btn.Parent = parent
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	return btn
+end
+
+local function createExitButton(parent, closeFrame)
+	local exit = Instance.new("TextButton", parent)
+	exit.Size = UDim2.new(0, 30, 0, 30)
+	exit.Position = UDim2.new(1, -35, 0, 5)
+	exit.Text = "X"
+	exit.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+	exit.TextColor3 = ERROR_COLOR
+	exit.Font = Enum.Font.SourceSansBold
+	exit.TextSize = 18
+	exit.MouseButton1Click:Connect(function()
+		closeFrame.Visible = false
+	end)
+end
+
+-------------------------------------------------
+-- Main Panel
+-------------------------------------------------
 local mainFrame = Instance.new("Frame", gui)
 mainFrame.Size = UDim2.new(0, 220, 0, 320)
 mainFrame.Position = UDim2.new(0, 20, 0.2, 0)
@@ -32,7 +64,6 @@ mainFrame.BackgroundColor3 = BG_COLOR
 makeDraggable(mainFrame)
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
--- Title bar
 local titleBar = Instance.new("TextLabel", mainFrame)
 titleBar.Size = UDim2.new(1, 0, 0, 35)
 titleBar.BackgroundColor3 = BTN_COLOR
@@ -53,7 +84,6 @@ closeBtn.MouseButton1Click:Connect(function()
 	mainFrame.Visible = false
 end)
 
--- Button list
 local buttonHolder = Instance.new("Frame", mainFrame)
 buttonHolder.Size = UDim2.new(1, -20, 1, -45)
 buttonHolder.Position = UDim2.new(0, 10, 0, 40)
@@ -62,28 +92,14 @@ buttonHolder.BackgroundTransparency = 1
 local layout = Instance.new("UIListLayout", buttonHolder)
 layout.Padding = UDim.new(0, 5)
 
-local function createButton(name)
-	local btn = Instance.new("TextButton", buttonHolder)
-	btn.Size = UDim2.new(1, 0, 0, 40)
-	btn.BackgroundColor3 = BTN_COLOR
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.Text = name
-	btn.Font = Enum.Font.SourceSansBold
-	btn.TextSize = 16
-	local c = Instance.new("UICorner", btn)
-	c.CornerRadius = UDim.new(0, 8)
-	return btn
-end
-
--- === Buttons ===
-local flyBtn = createButton("Fly Mode")
-local espBtn = createButton("ESP (Names)")
-local trackBtn = createButton("Tracking (Studs)")
-local tweenBtn = createButton("Tween to Player")
-local logBtn = createButton("Admin Log")
+-- Buttons
+local flyBtn = createButton("Fly Mode", buttonHolder)
+local espBtn = createButton("ESP Players", buttonHolder)
+local tweenBtn = createButton("Tween to Player", buttonHolder)
+local logBtn = createButton("Admin Log", buttonHolder)
 
 -------------------------------------------------
--- Fly Mode Window
+-- Fly Mode Frame
 -------------------------------------------------
 local flyFrame = Instance.new("Frame", gui)
 flyFrame.Size = UDim2.new(0, 220, 0, 160)
@@ -92,18 +108,7 @@ flyFrame.BackgroundColor3 = BG_COLOR
 flyFrame.Visible = false
 makeDraggable(flyFrame)
 Instance.new("UICorner", flyFrame).CornerRadius = UDim.new(0, 8)
-
-local exitFly = Instance.new("TextButton", flyFrame)
-exitFly.Size = UDim2.new(0, 30, 0, 30)
-exitFly.Position = UDim2.new(1, -35, 0, 5)
-exitFly.Text = "X"
-exitFly.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
-exitFly.TextColor3 = ERROR_COLOR
-exitFly.Font = Enum.Font.SourceSansBold
-exitFly.TextSize = 18
-exitFly.MouseButton1Click:Connect(function()
-	flyFrame.Visible = false
-end)
+createExitButton(flyFrame, flyFrame)
 
 local speedBox = Instance.new("TextBox", flyFrame)
 speedBox.Size = UDim2.new(1, -20, 0, 40)
@@ -160,7 +165,7 @@ UserInputService.InputEnded:Connect(function(i,gp)
 end)
 
 RunService.RenderStepped:Connect(function()
-	if flying then
+	if flying and hrp then
 		local camCF = workspace.CurrentCamera.CFrame
 		local dir = (camCF.LookVector*input.Forward)+(camCF.RightVector*input.Right)+(Vector3.yAxis*input.Up)
 		if dir.Magnitude>0 then dir=dir.Unit end
@@ -173,7 +178,122 @@ flyBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- Admin Log Frame
+-- ESP (Names + Studs)
+-------------------------------------------------
+local function clearESP()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character and p.Character:FindFirstChild("Head") then
+			local tag = p.Character.Head:FindFirstChild("ESPTag")
+			if tag then tag:Destroy() end
+		end
+	end
+end
+
+local function createESP(plr)
+	if plr == player then return end
+	local char = plr.Character
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+
+	local old = head:FindFirstChild("ESPTag")
+	if old then old:Destroy() end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESPTag"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 200, 0, 50)
+	billboard.AlwaysOnTop = true
+	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.Parent = head
+
+	local label = Instance.new("TextLabel", billboard)
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = plr.Name
+	label.TextColor3 = ACCENT_COLOR
+	label.TextStrokeTransparency = 0.2
+	label.Font = Enum.Font.SourceSansBold
+	label.TextSize = 16
+
+	RunService.RenderStepped:Connect(function()
+		if player.Character and plr.Character then
+			local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
+			local theirHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+			if myHRP and theirHRP then
+				local dist = (myHRP.Position - theirHRP.Position).Magnitude
+				label.Text = plr.Name .. " [" .. math.floor(dist) .. " studs]"
+			end
+		end
+	end)
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	clearESP()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player then
+			createESP(p)
+		end
+	end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function()
+		task.wait(1)
+		createESP(p)
+	end)
+end)
+
+-------------------------------------------------
+-- Tween to Player
+-------------------------------------------------
+local tweenFrame = Instance.new("Frame", gui)
+tweenFrame.Size = UDim2.new(0, 220, 0, 300)
+tweenFrame.Position = UDim2.new(0, 480, 0.2, 0)
+tweenFrame.BackgroundColor3 = BG_COLOR
+tweenFrame.Visible = false
+makeDraggable(tweenFrame)
+Instance.new("UICorner", tweenFrame).CornerRadius = UDim.new(0, 8)
+createExitButton(tweenFrame, tweenFrame)
+
+local scroll = Instance.new("ScrollingFrame", tweenFrame)
+scroll.Size = UDim2.new(1, -10, 1, -10)
+scroll.Position = UDim2.new(0, 5, 0, 5)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.BackgroundTransparency=1
+scroll.ScrollBarThickness=5
+
+local list = Instance.new("UIListLayout", scroll)
+list.Padding = UDim.new(0,5)
+
+local function refreshTween()
+	for _,c in ipairs(scroll:GetChildren()) do
+		if c:IsA("TextButton") then c:Destroy() end
+	end
+	for _,plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player then
+			local btn = createButton(plr.Name, scroll)
+			btn.MouseButton1Click:Connect(function()
+				if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+					local target = plr.Character.HumanoidRootPart
+					local tween = TweenService:Create(hrp, TweenInfo.new(2,Enum.EasingStyle.Linear),{CFrame=target.CFrame+Vector3.new(0,3,0)})
+					tween:Play()
+				end
+			end)
+		end
+	end
+end
+
+tweenBtn.MouseButton1Click:Connect(function()
+	tweenFrame.Visible = not tweenFrame.Visible
+	if tweenFrame.Visible then refreshTween() end
+end)
+
+Players.PlayerAdded:Connect(function() if tweenFrame.Visible then refreshTween() end end)
+Players.PlayerRemoving:Connect(function() if tweenFrame.Visible then refreshTween() end end)
+
+-------------------------------------------------
+-- Admin Log
 -------------------------------------------------
 local logFrame = Instance.new("Frame", gui)
 logFrame.Size = UDim2.new(0, 300, 0, 300)
@@ -182,18 +302,7 @@ logFrame.BackgroundColor3 = BG_COLOR
 logFrame.Visible = false
 makeDraggable(logFrame)
 Instance.new("UICorner", logFrame).CornerRadius = UDim.new(0, 8)
-
-local exitLog = Instance.new("TextButton", logFrame)
-exitLog.Size = UDim2.new(0, 30, 0, 30)
-exitLog.Position = UDim2.new(1, -35, 0, 5)
-exitLog.Text = "X"
-exitLog.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
-exitLog.TextColor3 = ERROR_COLOR
-exitLog.Font = Enum.Font.SourceSansBold
-exitLog.TextSize = 18
-exitLog.MouseButton1Click:Connect(function()
-	logFrame.Visible = false
-end)
+createExitButton(logFrame, logFrame)
 
 local scrolling = Instance.new("ScrollingFrame", logFrame)
 scrolling.Size = UDim2.new(1, -10, 1, -10)
@@ -205,7 +314,6 @@ scrolling.BackgroundTransparency = 1
 local listLayout = Instance.new("UIListLayout", scrolling)
 listLayout.Padding = UDim.new(0, 2)
 
--- Add logs
 LogService.MessageOut:Connect(function(msg, msgType)
 	local lbl = Instance.new("TextLabel", scrolling)
 	lbl.Size = UDim2.new(1, -5, 0, 20)
