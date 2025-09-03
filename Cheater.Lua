@@ -356,13 +356,15 @@ Players.PlayerRemoving:Connect(function()
 	if tweenFrame.Visible then refreshTween() end
 end)
 -------------------------------------------------
--- Admin Log Frame (with filters)
+-- Admin Log (Scrolling-based)
 -------------------------------------------------
-local logFrame = Instance.new("Frame", gui)
+local logFrame = Instance.new("ScrollingFrame", gui)
 logFrame.Size = UDim2.new(0, 350, 0, 350)
 logFrame.Position = UDim2.new(0, 700, 0.2, 0)
 logFrame.BackgroundColor3 = BG_COLOR
 logFrame.Visible = false
+logFrame.CanvasSize = UDim2.new(0,0,0,0)
+logFrame.ScrollBarThickness = 6
 makeDraggable(logFrame)
 Instance.new("UICorner", logFrame).CornerRadius = UDim.new(0, 8)
 
@@ -406,30 +408,31 @@ local warnBtn = createFilterBtn("Warning", Color3.fromRGB(255,200,0))
 local errorBtn = createFilterBtn("Error", ERROR_COLOR)
 local clearBtn = createFilterBtn("Clear", Color3.fromRGB(255,255,255))
 
--- Log list
-local scrolling = Instance.new("ScrollingFrame", logFrame)
-scrolling.Size = UDim2.new(1, -10, 1, -50)
-scrolling.Position = UDim2.new(0, 5, 0, 45)
-scrolling.CanvasSize = UDim2.new(0,0,0,0)
-scrolling.ScrollBarThickness = 5
-scrolling.BackgroundTransparency = 1
-
-local listLayout = Instance.new("UIListLayout", scrolling)
+-- Logs list
+local listLayout = Instance.new("UIListLayout", logFrame)
 listLayout.Padding = UDim.new(0, 2)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Store logs for filtering
 local allLogs = {}
 
 local function refreshLogs(filterType)
-	for _, child in ipairs(scrolling:GetChildren()) do
-		if child:IsA("TextLabel") then child:Destroy() end
+	-- remove old labels except filterBar + exit button
+	for _, child in ipairs(logFrame:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
 	end
+
 	for _, log in ipairs(allLogs) do
 		if not filterType or log.Type == filterType then
-			local lbl = Instance.new("TextLabel", scrolling)
-			lbl.Size = UDim2.new(1, -5, 0, 20)
+			local lbl = Instance.new("TextLabel", logFrame)
+			lbl.Size = UDim2.new(1, -10, 0, 0) -- allow autosize
+			lbl.AutomaticSize = Enum.AutomaticSize.Y
 			lbl.BackgroundTransparency = 1
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.TextYAlignment = Enum.TextYAlignment.Top
+			lbl.TextWrapped = true
 			lbl.Font = Enum.Font.Code
 			lbl.TextSize = 14
 			lbl.TextColor3 = (log.Type == Enum.MessageType.MessageError and ERROR_COLOR)
@@ -438,7 +441,8 @@ local function refreshLogs(filterType)
 			lbl.Text = log.Text
 		end
 	end
-	scrolling.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
+
+	logFrame.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
 end
 
 -- Capture logs
@@ -459,4 +463,126 @@ end)
 -- Toggle open
 logBtn.MouseButton1Click:Connect(function()
 	logFrame.Visible = not logFrame.Visible
+end)
+-------------------------------------------------
+-- EXTRA: Explorer Button + Tree Viewer
+-------------------------------------------------
+
+-- Explorer Button (next to Clear)
+local explorerBtn = createFilterBtn("Explorer", Color3.fromRGB(150, 255, 150))
+
+-- Explorer Frame
+local explorerFrame = Instance.new("Frame", gui)
+explorerFrame.Size = UDim2.new(0, 400, 0, 400)
+explorerFrame.Position = UDim2.new(0, 1100, 0.2, 0)
+explorerFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+explorerFrame.Visible = false
+makeDraggable(explorerFrame)
+Instance.new("UICorner", explorerFrame).CornerRadius = UDim.new(0, 8)
+
+-- Close button for Explorer
+local exitExplorer = Instance.new("TextButton", explorerFrame)
+exitExplorer.Size = UDim2.new(0, 30, 0, 30)
+exitExplorer.Position = UDim2.new(1, -35, 0, 5)
+exitExplorer.Text = "X"
+exitExplorer.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+exitExplorer.TextColor3 = ERROR_COLOR
+exitExplorer.Font = Enum.Font.SourceSansBold
+exitExplorer.TextSize = 18
+exitExplorer.MouseButton1Click:Connect(function()
+	explorerFrame.Visible = false
+end)
+
+-- Search bar
+local searchBox = Instance.new("TextBox", explorerFrame)
+searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Position = UDim2.new(0, 5, 0, 40)
+searchBox.PlaceholderText = "Search..."
+searchBox.Text = ""
+searchBox.ClearTextOnFocus = false
+searchBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+searchBox.TextColor3 = Color3.new(1,1,1)
+searchBox.Font = Enum.Font.Code
+searchBox.TextSize = 14
+Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
+
+-- Search mode dropdown
+local searchMode = "Name" -- default
+local searchModeBtn = Instance.new("TextButton", explorerFrame)
+searchModeBtn.Size = UDim2.new(0, 100, 0, 30)
+searchModeBtn.Position = UDim2.new(1, -105, 0, 40)
+searchModeBtn.Text = "Mode: Name"
+searchModeBtn.BackgroundColor3 = Color3.fromRGB(70,70,100)
+searchModeBtn.TextColor3 = Color3.new(1,1,1)
+searchModeBtn.Font = Enum.Font.SourceSansBold
+searchModeBtn.TextSize = 14
+Instance.new("UICorner", searchModeBtn).CornerRadius = UDim.new(0, 6)
+
+searchModeBtn.MouseButton1Click:Connect(function()
+	if searchMode == "Name" then
+		searchMode = "Type"
+		searchModeBtn.Text = "Mode: Type"
+	else
+		searchMode = "Name"
+		searchModeBtn.Text = "Mode: Name"
+	end
+end)
+
+-- Scrolling tree
+local explorerScroll = Instance.new("ScrollingFrame", explorerFrame)
+explorerScroll.Size = UDim2.new(1, -10, 1, -80)
+explorerScroll.Position = UDim2.new(0, 5, 0, 75)
+explorerScroll.CanvasSize = UDim2.new(0,0,0,0)
+explorerScroll.ScrollBarThickness = 6
+explorerScroll.BackgroundTransparency = 1
+
+local explorerLayout = Instance.new("UIListLayout", explorerScroll)
+explorerLayout.Padding = UDim.new(0, 2)
+explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Helper: recursive tree builder
+local function addInstanceNode(parent, instance, depth, filter)
+	local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
+	if not filter or string.find(
+		searchMode == "Name" and instance.Name:lower() or instance.ClassName:lower(),
+		filter:lower()
+	) then
+		local lbl = Instance.new("TextLabel", explorerScroll)
+		lbl.Size = UDim2.new(1, -5, 0, 20)
+		lbl.BackgroundTransparency = 1
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Font = Enum.Font.Code
+		lbl.TextSize = 14
+		lbl.TextColor3 = Color3.new(1,1,1)
+		lbl.Text = text
+	end
+	for _, child in ipairs(instance:GetChildren()) do
+		addInstanceNode(instance, child, depth+1, filter)
+	end
+end
+
+-- Refresh Explorer
+local function refreshExplorer(filter)
+	for _, child in ipairs(explorerScroll:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	addInstanceNode(nil, game, 0, filter)
+	explorerScroll.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y+10)
+end
+
+-- Open Explorer
+explorerBtn.MouseButton1Click:Connect(function()
+	explorerFrame.Visible = not explorerFrame.Visible
+	if explorerFrame.Visible then
+		refreshExplorer()
+	end
+end)
+
+-- Search update
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	if explorerFrame.Visible then
+		refreshExplorer(searchBox.Text)
+	end
 end)
