@@ -356,19 +356,19 @@ Players.PlayerRemoving:Connect(function()
 	if tweenFrame.Visible then refreshTween() end
 end)
 -------------------------------------------------
--- ADMIN LOG (Scrolling-based)
+-- ADMIN LOG FRAME (Container)
 -------------------------------------------------
-local logFrame = Instance.new("ScrollingFrame", gui)
-logFrame.Size = UDim2.new(0, 350, 0, 350)
+local logFrame = Instance.new("Frame", gui)
+logFrame.Size = UDim2.new(0, 400, 0, 400)
 logFrame.Position = UDim2.new(0, 700, 0.2, 0)
 logFrame.BackgroundColor3 = BG_COLOR
 logFrame.Visible = false
-logFrame.CanvasSize = UDim2.new(0,0,0,0)
-logFrame.ScrollBarThickness = 6
 makeDraggable(logFrame)
 Instance.new("UICorner", logFrame).CornerRadius = UDim.new(0, 8)
 
--- Close button
+-------------------------------------------------
+-- CLOSE BUTTON
+-------------------------------------------------
 local exitLog = Instance.new("TextButton", logFrame)
 exitLog.Size = UDim2.new(0, 30, 0, 30)
 exitLog.Position = UDim2.new(1, -35, 0, 5)
@@ -381,7 +381,9 @@ exitLog.MouseButton1Click:Connect(function()
 	logFrame.Visible = false
 end)
 
--- Filter buttons bar
+-------------------------------------------------
+-- FILTER BAR
+-------------------------------------------------
 local filterBar = Instance.new("Frame", logFrame)
 filterBar.Size = UDim2.new(1, -10, 0, 35)
 filterBar.Position = UDim2.new(0, 5, 0, 5)
@@ -408,16 +410,27 @@ local warnBtn = createFilterBtn("Warning", Color3.fromRGB(255,200,0))
 local errorBtn = createFilterBtn("Error", ERROR_COLOR)
 local clearBtn = createFilterBtn("Clear", Color3.fromRGB(255,255,255))
 
--- Logs list
-local listLayout = Instance.new("UIListLayout", logFrame)
+-------------------------------------------------
+-- LOGS SCROLLING FRAME (only output goes here)
+-------------------------------------------------
+local logScroll = Instance.new("ScrollingFrame", logFrame)
+logScroll.Size = UDim2.new(1, -10, 1, -50) -- leave space for filter bar
+logScroll.Position = UDim2.new(0, 5, 0, 45)
+logScroll.BackgroundTransparency = 1
+logScroll.CanvasSize = UDim2.new(0,0,0,0)
+logScroll.ScrollBarThickness = 6
+
+local listLayout = Instance.new("UIListLayout", logScroll)
 listLayout.Padding = UDim.new(0, 2)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Store logs for filtering
+-------------------------------------------------
+-- STORE LOGS
+-------------------------------------------------
 local allLogs = {}
 
 local function refreshLogs(filterType)
-	for _, child in ipairs(logFrame:GetChildren()) do
+	for _, child in ipairs(logScroll:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
@@ -425,7 +438,7 @@ local function refreshLogs(filterType)
 
 	for _, log in ipairs(allLogs) do
 		if not filterType or log.Type == filterType then
-			local lbl = Instance.new("TextLabel", logFrame)
+			local lbl = Instance.new("TextLabel", logScroll)
 			lbl.Size = UDim2.new(1, -10, 0, 0)
 			lbl.AutomaticSize = Enum.AutomaticSize.Y
 			lbl.BackgroundTransparency = 1
@@ -441,16 +454,22 @@ local function refreshLogs(filterType)
 		end
 	end
 
-	logFrame.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
+	logScroll.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
 end
 
--- Capture logs
+-------------------------------------------------
+-- CAPTURE OUTPUT (includes print, warn, error)
+-------------------------------------------------
+local LogService = game:GetService("LogService")
+
 LogService.MessageOut:Connect(function(msg, msgType)
 	table.insert(allLogs, {Text=msg, Type=msgType})
 	refreshLogs()
 end)
 
--- Filters
+-------------------------------------------------
+-- FILTERS
+-------------------------------------------------
 infoBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageOutput) end)
 warnBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageWarning) end)
 errorBtn.MouseButton1Click:Connect(function() refreshLogs(Enum.MessageType.MessageError) end)
@@ -459,23 +478,33 @@ clearBtn.MouseButton1Click:Connect(function()
 	refreshLogs()
 end)
 
--- Toggle open (Admin Log button in main panel)
+-------------------------------------------------
+-- TOGGLE OPEN (Admin Log button)
+-------------------------------------------------
 logBtn.MouseButton1Click:Connect(function()
 	logFrame.Visible = not logFrame.Visible
 end)
 
 -------------------------------------------------
--- EXPLORER FRAME
+-- EXPLORER SCROLLING FRAME
 -------------------------------------------------
-local explorerFrame = Instance.new("Frame", gui)
+local explorerFrame = Instance.new("ScrollingFrame", gui)
 explorerFrame.Size = UDim2.new(0, 400, 0, 400)
 explorerFrame.Position = UDim2.new(0, 1100, 0.2, 0)
 explorerFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 explorerFrame.Visible = false
+explorerFrame.CanvasSize = UDim2.new(0,0,0,0)
+explorerFrame.ScrollBarThickness = 6
 makeDraggable(explorerFrame)
 Instance.new("UICorner", explorerFrame).CornerRadius = UDim.new(0, 8)
 
--- Close button
+local explorerLayout = Instance.new("UIListLayout", explorerFrame)
+explorerLayout.Padding = UDim.new(0, 2)
+explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-------------------------------------------------
+-- CLOSE BUTTON
+-------------------------------------------------
 local exitExplorer = Instance.new("TextButton", explorerFrame)
 exitExplorer.Size = UDim2.new(0, 30, 0, 30)
 exitExplorer.Position = UDim2.new(1, -35, 0, 5)
@@ -484,13 +513,16 @@ exitExplorer.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
 exitExplorer.TextColor3 = ERROR_COLOR
 exitExplorer.Font = Enum.Font.SourceSansBold
 exitExplorer.TextSize = 18
+exitExplorer.ZIndex = 2
 exitExplorer.MouseButton1Click:Connect(function()
 	explorerFrame.Visible = false
 end)
 
--- Search bar
+-------------------------------------------------
+-- SEARCH BAR
+-------------------------------------------------
 local searchBox = Instance.new("TextBox", explorerFrame)
-searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Size = UDim2.new(1, -120, 0, 30)
 searchBox.Position = UDim2.new(0, 5, 0, 40)
 searchBox.PlaceholderText = "Search..."
 searchBox.Text = ""
@@ -501,7 +533,9 @@ searchBox.Font = Enum.Font.Code
 searchBox.TextSize = 14
 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
 
--- Search mode toggle
+-------------------------------------------------
+-- SEARCH MODE TOGGLE
+-------------------------------------------------
 local searchMode = "Name"
 local searchModeBtn = Instance.new("TextButton", explorerFrame)
 searchModeBtn.Size = UDim2.new(0, 100, 0, 30)
@@ -523,51 +557,67 @@ searchModeBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Scrolling tree
-local explorerScroll = Instance.new("ScrollingFrame", explorerFrame)
-explorerScroll.Size = UDim2.new(1, -10, 1, -80)
-explorerScroll.Position = UDim2.new(0, 5, 0, 75)
-explorerScroll.CanvasSize = UDim2.new(0,0,0,0)
-explorerScroll.ScrollBarThickness = 6
-explorerScroll.BackgroundTransparency = 1
+-------------------------------------------------
+-- INCREMENTAL LOADING
+-------------------------------------------------
+local RunService = game:GetService("RunService")
+local BATCH_SIZE = 100 -- nodes per frame
 
-local explorerLayout = Instance.new("UIListLayout", explorerScroll)
-explorerLayout.Padding = UDim.new(0, 2)
-explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Recursive tree builder
-local function addInstanceNode(instance, depth, filter)
-	local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
-	if not filter or string.find(
-		searchMode == "Name" and instance.Name:lower() or instance.ClassName:lower(),
-		filter:lower()
-	) then
-		local lbl = Instance.new("TextLabel", explorerScroll)
-		lbl.Size = UDim2.new(1, -5, 0, 20)
-		lbl.BackgroundTransparency = 1
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.Font = Enum.Font.Code
-		lbl.TextSize = 14
-		lbl.TextColor3 = Color3.new(1,1,1)
-		lbl.Text = text
-	end
-	for _, child in ipairs(instance:GetChildren()) do
-		addInstanceNode(child, depth+1, filter)
-	end
-end
-
--- Refresh Explorer
 local function refreshExplorer(filter)
-	for _, child in ipairs(explorerScroll:GetChildren()) do
+	-- clear old labels (keep UI elements like close/search)
+	for _, child in ipairs(explorerFrame:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
 	end
-	addInstanceNode(game, 0, filter)
-	explorerScroll.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y+10)
+
+	-- gather nodes
+	local nodes = {}
+	local function collect(instance, depth)
+		local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
+		if not filter or string.find(
+			(searchMode == "Name" and instance.Name or instance.ClassName):lower(),
+			filter:lower()
+		) then
+			table.insert(nodes, {depth = depth, text = text})
+		end
+		for _, child in ipairs(instance:GetChildren()) do
+			collect(child, depth+1)
+		end
+	end
+	collect(game, 0)
+
+	-- incremental rendering
+	local index = 1
+	local function renderBatch()
+		local count = 0
+		while index <= #nodes and count < BATCH_SIZE do
+			local node = nodes[index]
+			local lbl = Instance.new("TextLabel", explorerFrame)
+			lbl.Size = UDim2.new(1, -5, 0, 20)
+			lbl.BackgroundTransparency = 1
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.Font = Enum.Font.Code
+			lbl.TextSize = 14
+			lbl.TextColor3 = Color3.new(1,1,1)
+			lbl.Text = node.text
+
+			index += 1
+			count += 1
+		end
+
+		explorerFrame.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y + 10)
+		if index <= #nodes then
+			RunService.Heartbeat:Once(renderBatch)
+		end
+	end
+
+	renderBatch()
 end
 
--- Toggle open (Explorer button in main panel)
+-------------------------------------------------
+-- BUTTON TO TOGGLE EXPLORER
+-------------------------------------------------
 explorerBtn.MouseButton1Click:Connect(function()
 	explorerFrame.Visible = not explorerFrame.Visible
 	if explorerFrame.Visible then
@@ -575,9 +625,12 @@ explorerBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Search update
+-------------------------------------------------
+-- SEARCH UPDATE
+-------------------------------------------------
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	if explorerFrame.Visible then
 		refreshExplorer(searchBox.Text)
 	end
 end)
+
