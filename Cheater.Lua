@@ -181,7 +181,7 @@ flyBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- ESP (Names + Studs)
+-- ESP (Names + Studs + Health)
 -------------------------------------------------
 local function clearESP()
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -219,13 +219,18 @@ local function createESP(plr)
 	label.Font = Enum.Font.SourceSansBold
 	label.TextSize = 16
 
+	-- Update loop
 	RunService.RenderStepped:Connect(function()
 		if player.Character and plr.Character then
 			local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
 			local theirHRP = plr.Character:FindFirstChild("HumanoidRootPart")
-			if myHRP and theirHRP then
+			local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+
+			if myHRP and theirHRP and humanoid then
 				local dist = (myHRP.Position - theirHRP.Position).Magnitude
-				label.Text = plr.Name .. " [" .. math.floor(dist) .. " studs]"
+				local hp = math.floor(humanoid.Health)
+				local maxHp = math.floor(humanoid.MaxHealth)
+				label.Text = string.format("%s [%d studs] | HP: %d/%d", plr.Name, dist, hp, maxHp)
 			end
 		end
 	end)
@@ -246,7 +251,6 @@ Players.PlayerAdded:Connect(function(p)
 		createESP(p)
 	end)
 end)
-
 -------------------------------------------------
 -- Tween to Player
 -------------------------------------------------
