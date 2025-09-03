@@ -486,7 +486,15 @@ logBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- EXPLORER SCROLLING FRAME
+-- FULL PAGINATED EXPLORER
+-------------------------------------------------
+local RunService = game:GetService("RunService")
+
+-- colors (replace with your own if you have globals)
+local ERROR_COLOR = Color3.fromRGB(255,80,80)
+
+-------------------------------------------------
+-- MAIN FRAME
 -------------------------------------------------
 local explorerFrame = Instance.new("ScrollingFrame", gui)
 explorerFrame.Size = UDim2.new(0, 400, 0, 400)
@@ -558,21 +566,25 @@ searchModeBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- INCREMENTAL LOADING
+-- PAGINATION SETTINGS
 -------------------------------------------------
-local RunService = game:GetService("RunService")
-local BATCH_SIZE = 100 -- nodes per frame
+local PAGE_SIZE = 200
+local nodes = {}
+local pageIndex = 0
+local totalPages = 1
 
-local function refreshExplorer(filter)
-	-- clear old labels (keep UI elements like close/search)
+local pageLabel -- page counter label
+
+local function clearExplorer()
 	for _, child in ipairs(explorerFrame:GetChildren()) do
-		if child:IsA("TextLabel") then
+		if child:IsA("TextLabel") or child.Name == "PageBtn" or child.Name == "PageLabel" then
 			child:Destroy()
 		end
 	end
+end
 
-	-- gather nodes
-	local nodes = {}
+local function collectNodes(filter)
+	nodes = {}
 	local function collect(instance, depth)
 		local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
 		if not filter or string.find(
@@ -586,42 +598,87 @@ local function refreshExplorer(filter)
 		end
 	end
 	collect(game, 0)
+	totalPages = math.max(1, math.ceil(#nodes / PAGE_SIZE))
+end
 
-	-- incremental rendering
-	local index = 1
-	local function renderBatch()
-		local count = 0
-		while index <= #nodes and count < BATCH_SIZE do
-			local node = nodes[index]
-			local lbl = Instance.new("TextLabel", explorerFrame)
-			lbl.Size = UDim2.new(1, -5, 0, 20)
-			lbl.BackgroundTransparency = 1
-			lbl.TextXAlignment = Enum.TextXAlignment.Left
-			lbl.Font = Enum.Font.Code
-			lbl.TextSize = 14
-			lbl.TextColor3 = Color3.new(1,1,1)
-			lbl.Text = node.text
+local function renderPage()
+	clearExplorer()
 
-			index += 1
-			count += 1
-		end
+	local startIndex = pageIndex * PAGE_SIZE + 1
+	local endIndex = math.min(startIndex + PAGE_SIZE - 1, #nodes)
 
-		explorerFrame.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y + 10)
-		if index <= #nodes then
-			RunService.Heartbeat:Once(renderBatch)
-		end
+	-- render nodes for this page
+	for i = startIndex, endIndex do
+		local node = nodes[i]
+		local lbl = Instance.new("TextLabel", explorerFrame)
+		lbl.Size = UDim2.new(1, -5, 0, 20)
+		lbl.BackgroundTransparency = 1
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Font = Enum.Font.Code
+		lbl.TextSize = 14
+		lbl.TextColor3 = Color3.new(1,1,1)
+		lbl.Text = node.text
 	end
 
-	renderBatch()
+	-- page controls
+	if pageIndex > 0 then
+		local prevBtn = Instance.new("TextButton", explorerFrame)
+		prevBtn.Name = "PageBtn"
+		prevBtn.Size = UDim2.new(0.5, -3, 0, 30)
+		prevBtn.Text = "< Prev"
+		prevBtn.BackgroundColor3 = Color3.fromRGB(60,80,60)
+		prevBtn.TextColor3 = Color3.new(1,1,1)
+		prevBtn.Font = Enum.Font.SourceSansBold
+		prevBtn.TextSize = 14
+		prevBtn.MouseButton1Click:Connect(function()
+			pageIndex -= 1
+			renderPage()
+		end)
+	end
+
+	if endIndex < #nodes then
+		local nextBtn = Instance.new("TextButton", explorerFrame)
+		nextBtn.Name = "PageBtn"
+		nextBtn.Size = UDim2.new(0.5, -3, 0, 30)
+		nextBtn.Position = UDim2.new(0.5, 3, 0, 0)
+		nextBtn.Text = "Next >"
+		nextBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+		nextBtn.TextColor3 = Color3.new(1,1,1)
+		nextBtn.Font = Enum.Font.SourceSansBold
+		nextBtn.TextSize = 14
+		nextBtn.MouseButton1Click:Connect(function()
+			pageIndex += 1
+			renderPage()
+		end)
+	end
+
+	-- page counter
+	pageLabel = Instance.new("TextLabel", explorerFrame)
+	pageLabel.Name = "PageLabel"
+	pageLabel.Size = UDim2.new(1, -5, 0, 20)
+	pageLabel.BackgroundTransparency = 1
+	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
+	pageLabel.Font = Enum.Font.SourceSansBold
+	pageLabel.TextSize = 14
+	pageLabel.TextColor3 = Color3.new(1,1,1)
+	pageLabel.Text = string.format("Page %d / %d", pageIndex+1, totalPages)
+
+	explorerFrame.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y + 10)
+end
+
+local function refreshExplorer(filter)
+	collectNodes(filter)
+	pageIndex = 0
+	renderPage()
 end
 
 -------------------------------------------------
--- BUTTON TO TOGGLE EXPLORER
+-- TOGGLE EXPLORER
 -------------------------------------------------
 explorerBtn.MouseButton1Click:Connect(function()
 	explorerFrame.Visible = not explorerFrame.Visible
 	if explorerFrame.Visible then
-		refreshExplorer()
+		refreshExplorer(searchBox.Text)
 	end
 end)
 
