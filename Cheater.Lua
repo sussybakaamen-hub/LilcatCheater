@@ -100,7 +100,7 @@ local flyBtn = createButton("Fly Mode", buttonHolder)
 local espBtn = createButton("ESP Players", buttonHolder)
 local tweenBtn = createButton("Tween to Player", buttonHolder)
 local logBtn = createButton("Admin Log", buttonHolder)
-
+local explorerBtn = createButton("Explorer", buttonHolder) -- NEW BUTTON
 -------------------------------------------------
 -- Fly Mode Frame
 -------------------------------------------------
@@ -356,7 +356,7 @@ Players.PlayerRemoving:Connect(function()
 	if tweenFrame.Visible then refreshTween() end
 end)
 -------------------------------------------------
--- Admin Log (Scrolling-based)
+-- ADMIN LOG (Scrolling-based)
 -------------------------------------------------
 local logFrame = Instance.new("ScrollingFrame", gui)
 logFrame.Size = UDim2.new(0, 350, 0, 350)
@@ -417,7 +417,6 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 local allLogs = {}
 
 local function refreshLogs(filterType)
-	-- remove old labels except filterBar + exit button
 	for _, child in ipairs(logFrame:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
@@ -427,7 +426,7 @@ local function refreshLogs(filterType)
 	for _, log in ipairs(allLogs) do
 		if not filterType or log.Type == filterType then
 			local lbl = Instance.new("TextLabel", logFrame)
-			lbl.Size = UDim2.new(1, -10, 0, 0) -- allow autosize
+			lbl.Size = UDim2.new(1, -10, 0, 0)
 			lbl.AutomaticSize = Enum.AutomaticSize.Y
 			lbl.BackgroundTransparency = 1
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -448,7 +447,7 @@ end
 -- Capture logs
 LogService.MessageOut:Connect(function(msg, msgType)
 	table.insert(allLogs, {Text=msg, Type=msgType})
-	refreshLogs() -- show immediately
+	refreshLogs()
 end)
 
 -- Filters
@@ -460,18 +459,14 @@ clearBtn.MouseButton1Click:Connect(function()
 	refreshLogs()
 end)
 
--- Toggle open
+-- Toggle open (Admin Log button in main panel)
 logBtn.MouseButton1Click:Connect(function()
 	logFrame.Visible = not logFrame.Visible
 end)
--------------------------------------------------
--- EXTRA: Explorer Button + Tree Viewer
--------------------------------------------------
 
--- Explorer Button (next to Clear)
-local explorerBtn = createFilterBtn("Explorer", Color3.fromRGB(150, 255, 150))
-
--- Explorer Frame
+-------------------------------------------------
+-- EXPLORER FRAME
+-------------------------------------------------
 local explorerFrame = Instance.new("Frame", gui)
 explorerFrame.Size = UDim2.new(0, 400, 0, 400)
 explorerFrame.Position = UDim2.new(0, 1100, 0.2, 0)
@@ -480,7 +475,7 @@ explorerFrame.Visible = false
 makeDraggable(explorerFrame)
 Instance.new("UICorner", explorerFrame).CornerRadius = UDim.new(0, 8)
 
--- Close button for Explorer
+-- Close button
 local exitExplorer = Instance.new("TextButton", explorerFrame)
 exitExplorer.Size = UDim2.new(0, 30, 0, 30)
 exitExplorer.Position = UDim2.new(1, -35, 0, 5)
@@ -506,8 +501,8 @@ searchBox.Font = Enum.Font.Code
 searchBox.TextSize = 14
 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
 
--- Search mode dropdown
-local searchMode = "Name" -- default
+-- Search mode toggle
+local searchMode = "Name"
 local searchModeBtn = Instance.new("TextButton", explorerFrame)
 searchModeBtn.Size = UDim2.new(0, 100, 0, 30)
 searchModeBtn.Position = UDim2.new(1, -105, 0, 40)
@@ -540,8 +535,8 @@ local explorerLayout = Instance.new("UIListLayout", explorerScroll)
 explorerLayout.Padding = UDim.new(0, 2)
 explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Helper: recursive tree builder
-local function addInstanceNode(parent, instance, depth, filter)
+-- Recursive tree builder
+local function addInstanceNode(instance, depth, filter)
 	local text = string.rep("   ", depth) .. instance.Name .. " ["..instance.ClassName.."]"
 	if not filter or string.find(
 		searchMode == "Name" and instance.Name:lower() or instance.ClassName:lower(),
@@ -557,7 +552,7 @@ local function addInstanceNode(parent, instance, depth, filter)
 		lbl.Text = text
 	end
 	for _, child in ipairs(instance:GetChildren()) do
-		addInstanceNode(instance, child, depth+1, filter)
+		addInstanceNode(child, depth+1, filter)
 	end
 end
 
@@ -568,11 +563,11 @@ local function refreshExplorer(filter)
 			child:Destroy()
 		end
 	end
-	addInstanceNode(nil, game, 0, filter)
+	addInstanceNode(game, 0, filter)
 	explorerScroll.CanvasSize = UDim2.new(0,0,0,explorerLayout.AbsoluteContentSize.Y+10)
 end
 
--- Open Explorer
+-- Toggle open (Explorer button in main panel)
 explorerBtn.MouseButton1Click:Connect(function()
 	explorerFrame.Visible = not explorerFrame.Visible
 	if explorerFrame.Visible then
