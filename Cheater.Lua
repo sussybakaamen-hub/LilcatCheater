@@ -749,13 +749,13 @@ explorerBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Search functionality
+-- Search functionality  
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
     if not explorerFrame.Visible then return end
     
     local searchText = searchBox.Text:lower()
     for _, child in ipairs(explorerFrame:GetChildren()) do
-        if child:IsA("Frame") then
+        if child:IsA("Frame") and child.Name and child.Name:match("^Node_") then
             local label = child:FindFirstChildOfClass("TextLabel")
             if label then
                 if searchText == "" then
