@@ -181,9 +181,17 @@ flyBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- ESP (Names + Studs + Health)
+-- ESP (Names + Studs + Health) with Cleanup
 -------------------------------------------------
+local espConnections = {} -- store RenderStepped connections
+
 local function clearESP()
+	-- remove GUI and disconnect loops
+	for _, conn in pairs(espConnections) do
+		if conn then conn:Disconnect() end
+	end
+	table.clear(espConnections)
+
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p.Character and p.Character:FindFirstChild("Head") then
 			local tag = p.Character.Head:FindFirstChild("ESPTag")
@@ -199,6 +207,7 @@ local function createESP(plr)
 	local head = char:FindFirstChild("Head")
 	if not head then return end
 
+	-- destroy old tag if exists
 	local old = head:FindFirstChild("ESPTag")
 	if old then old:Destroy() end
 
@@ -219,21 +228,27 @@ local function createESP(plr)
 	label.Font = Enum.Font.SourceSansBold
 	label.TextSize = 16
 
-	-- Update loop
-	RunService.RenderStepped:Connect(function()
-		if player.Character and plr.Character then
-			local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
-			local theirHRP = plr.Character:FindFirstChild("HumanoidRootPart")
-			local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+	-- update loop, stored in espConnections
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not (player.Character and plr.Character and billboard.Parent) then
+			if conn then conn:Disconnect() end
+			return
+		end
 
-			if myHRP and theirHRP and humanoid then
-				local dist = (myHRP.Position - theirHRP.Position).Magnitude
-				local hp = math.floor(humanoid.Health)
-				local maxHp = math.floor(humanoid.MaxHealth)
-				label.Text = string.format("%s [%d studs] | HP: %d/%d", plr.Name, dist, hp, maxHp)
-			end
+		local myHRP = player.Character:FindFirstChild("HumanoidRootPart")
+		local theirHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+		local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+
+		if myHRP and theirHRP and humanoid then
+			local dist = (myHRP.Position - theirHRP.Position).Magnitude
+			local hp = math.floor(humanoid.Health)
+			local maxHp = math.floor(humanoid.MaxHealth)
+			label.Text = string.format("%s [%d studs] | HP: %d/%d", plr.Name, dist, hp, maxHp)
 		end
 	end)
+
+	espConnections[plr.UserId] = conn
 end
 
 espBtn.MouseButton1Click:Connect(function()
