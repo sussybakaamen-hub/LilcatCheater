@@ -716,6 +716,7 @@ removeCorner.Parent = removeBtn
 -- Create Node Function
 -------------------------------------------------
 local selectedInstance = nil
+local highlightedLabel = nil
 
 local function createNode(parentUI, instance, depth)
     local container = Instance.new("Frame")
@@ -747,7 +748,11 @@ local function createNode(parentUI, instance, depth)
 
     -- Highlight selection
     label.MouseButton1Click:Connect(function()
+        if highlightedLabel then
+            highlightedLabel.BackgroundTransparency = 1
+        end
         selectedInstance = instance
+        highlightedLabel = label
         label.BackgroundTransparency = 0.5
         label.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
     end)
@@ -765,11 +770,9 @@ local function createNode(parentUI, instance, depth)
             plusBtn.Text = "+"
             expanded = false
         else
-            pcall(function()
-                for _, child in ipairs(instance:GetChildren()) do
-                    table.insert(childrenFrames, createNode(parentUI, child, depth + 1))
-                end
-            end)
+            for _, child in ipairs(instance:GetChildren()) do
+                table.insert(childrenFrames, createNode(parentUI, child, depth + 1))
+            end
             plusBtn.Text = "-"
             expanded = true
         end
@@ -789,7 +792,13 @@ local function refreshExplorerTree()
         end
     end
 
-    local roots = {workspace, game.Players, game.ReplicatedStorage,game:GetService("CoreGui")}
+    local roots = {
+        workspace,
+        game.Players,
+        game.ReplicatedStorage,
+        game:GetService("CoreGui") -- ✅ Full CoreGui included
+    }
+
     for _, root in ipairs(roots) do
         createNode(explorerScroll, root, 0)
     end
@@ -811,19 +820,22 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
         if child:IsA("Frame") then
             local label = child:FindFirstChildOfClass("TextButton")
             if label then
-                local checkText = (searchMode == "Name") and label.Text:lower() or label.Text:match("%((.-)%)"):lower()
+                local checkText = (searchMode == "Name")
+                    and label.Text:lower()
+                    or label.Text:match("%((.-)%)"):lower()
                 child.Visible = (searchText == "" or checkText:find(searchText, 1, true) ~= nil)
             end
         end
     end
 end)
 
--- Remove functionality
+-- Remove functionality (works on CoreGui too since exploit unlocks it)
 removeBtn.MouseButton1Click:Connect(function()
     if selectedInstance then
         selectedInstance:Destroy()
         refreshExplorerTree()
         selectedInstance = nil
+        highlightedLabel = nil
     end
 end)
 print("Lilcat Cheat Utility loaded successfully!")
