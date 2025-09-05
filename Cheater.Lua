@@ -657,8 +657,8 @@ local searchCorner = Instance.new("UICorner")
 searchCorner.CornerRadius = UDim.new(0, 6)
 searchCorner.Parent = searchBox
 
--- Mode Label (like "Mode: Name")
-local modeLabel = Instance.new("TextLabel")
+-- Mode Label (toggle between Name and Type)
+local modeLabel = Instance.new("TextButton")
 modeLabel.Size = UDim2.new(0, 100, 0, 30)
 modeLabel.Position = UDim2.new(1, -105, 0, 5)
 modeLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -672,9 +672,20 @@ local modeCorner = Instance.new("UICorner")
 modeCorner.CornerRadius = UDim.new(0, 6)
 modeCorner.Parent = modeLabel
 
+local searchMode = "Name"
+modeLabel.MouseButton1Click:Connect(function()
+    if searchMode == "Name" then
+        searchMode = "Type"
+        modeLabel.Text = "Mode: Type"
+    else
+        searchMode = "Name"
+        modeLabel.Text = "Mode: Name"
+    end
+end)
+
 -- Scrollable content for tree
 local explorerScroll = Instance.new("ScrollingFrame")
-explorerScroll.Size = UDim2.new(1, -10, 1, -90)
+explorerScroll.Size = UDim2.new(1, -10, 1, -60)
 explorerScroll.Position = UDim2.new(0, 5, 0, 40)
 explorerScroll.BackgroundTransparency = 1
 explorerScroll.ScrollBarThickness = 6
@@ -686,15 +697,15 @@ explorerLayout.Padding = UDim.new(0, 2)
 explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 explorerLayout.Parent = explorerScroll
 
--- Remove Button
+-- Remove Button (smaller)
 local removeBtn = Instance.new("TextButton")
-removeBtn.Size = UDim2.new(1, -10, 0, 40)
-removeBtn.Position = UDim2.new(0, 5, 1, -45)
+removeBtn.Size = UDim2.new(0, 80, 0, 25)
+removeBtn.Position = UDim2.new(1, -85, 1, -30)
 removeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 removeBtn.Text = "Remove"
 removeBtn.TextColor3 = Color3.new(1, 1, 1)
 removeBtn.Font = Enum.Font.SourceSansBold
-removeBtn.TextSize = 18
+removeBtn.TextSize = 14
 removeBtn.Parent = explorerFrame
 
 local removeCorner = Instance.new("UICorner")
@@ -704,6 +715,8 @@ removeCorner.Parent = removeBtn
 -------------------------------------------------
 -- Create Node Function
 -------------------------------------------------
+local selectedInstance = nil
+
 local function createNode(parentUI, instance, depth)
     local container = Instance.new("Frame")
     container.Name = "Node_" .. instance.Name
@@ -721,7 +734,7 @@ local function createNode(parentUI, instance, depth)
     plusBtn.TextSize = 14
     plusBtn.Parent = container
 
-    local label = Instance.new("TextLabel")
+    local label = Instance.new("TextButton")
     label.Size = UDim2.new(1, -30 - depth * 20, 0, 20)
     label.Position = UDim2.new(0, 25 + depth * 20, 0, 0)
     label.BackgroundTransparency = 1
@@ -731,6 +744,13 @@ local function createNode(parentUI, instance, depth)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.Text = instance.Name .. " (" .. instance.ClassName .. ")"
     label.Parent = container
+
+    -- Highlight selection
+    label.MouseButton1Click:Connect(function()
+        selectedInstance = instance
+        label.BackgroundTransparency = 0.5
+        label.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+    end)
 
     -- Expansion tracking
     local expanded = false
@@ -769,11 +789,10 @@ local function refreshExplorerTree()
         end
     end
 
-    pcall(function()
-        for _, service in ipairs(game:GetChildren()) do
-            createNode(explorerScroll, service, 0)
-        end
-    end)
+    local roots = {workspace, game.Players, game.ReplicatedStorage}
+    for _, root in ipairs(roots) do
+        createNode(explorerScroll, root, 0)
+    end
 
     explorerScroll.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
 end
@@ -790,12 +809,21 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
     local searchText = searchBox.Text:lower()
     for _, child in ipairs(explorerScroll:GetChildren()) do
         if child:IsA("Frame") then
-            local label = child:FindFirstChildOfClass("TextLabel")
+            local label = child:FindFirstChildOfClass("TextButton")
             if label then
-                child.Visible = (searchText == "" or label.Text:lower():find(searchText, 1, true) ~= nil)
+                local checkText = (searchMode == "Name") and label.Text:lower() or label.Text:match("%((.-)%)"):lower()
+                child.Visible = (searchText == "" or checkText:find(searchText, 1, true) ~= nil)
             end
         end
     end
 end)
 
+-- Remove functionality
+removeBtn.MouseButton1Click:Connect(function()
+    if selectedInstance then
+        selectedInstance:Destroy()
+        refreshExplorerTree()
+        selectedInstance = nil
+    end
+end)
 print("Lilcat Cheat Utility loaded successfully!")
