@@ -642,7 +642,7 @@ createExitButton(explorerFrame, explorerFrame)
 
 -- Search Box
 local searchBox = Instance.new("TextBox")
-searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Size = UDim2.new(1, -120, 0, 30)
 searchBox.Position = UDim2.new(0, 5, 0, 5)
 searchBox.PlaceholderText = "Search..."
 searchBox.Text = ""
@@ -657,9 +657,24 @@ local searchCorner = Instance.new("UICorner")
 searchCorner.CornerRadius = UDim.new(0, 6)
 searchCorner.Parent = searchBox
 
+-- Mode Label (like "Mode: Name")
+local modeLabel = Instance.new("TextLabel")
+modeLabel.Size = UDim2.new(0, 100, 0, 30)
+modeLabel.Position = UDim2.new(1, -105, 0, 5)
+modeLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+modeLabel.Text = "Mode: Name"
+modeLabel.TextColor3 = Color3.new(1, 1, 1)
+modeLabel.Font = Enum.Font.Code
+modeLabel.TextSize = 14
+modeLabel.Parent = explorerFrame
+
+local modeCorner = Instance.new("UICorner")
+modeCorner.CornerRadius = UDim.new(0, 6)
+modeCorner.Parent = modeLabel
+
 -- Scrollable content for tree
 local explorerScroll = Instance.new("ScrollingFrame")
-explorerScroll.Size = UDim2.new(1, -10, 1, -45)
+explorerScroll.Size = UDim2.new(1, -10, 1, -90)
 explorerScroll.Position = UDim2.new(0, 5, 0, 40)
 explorerScroll.BackgroundTransparency = 1
 explorerScroll.ScrollBarThickness = 6
@@ -671,7 +686,24 @@ explorerLayout.Padding = UDim.new(0, 2)
 explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 explorerLayout.Parent = explorerScroll
 
+-- Remove Button
+local removeBtn = Instance.new("TextButton")
+removeBtn.Size = UDim2.new(1, -10, 0, 40)
+removeBtn.Position = UDim2.new(0, 5, 1, -45)
+removeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+removeBtn.Text = "Remove"
+removeBtn.TextColor3 = Color3.new(1, 1, 1)
+removeBtn.Font = Enum.Font.SourceSansBold
+removeBtn.TextSize = 18
+removeBtn.Parent = explorerFrame
+
+local removeCorner = Instance.new("UICorner")
+removeCorner.CornerRadius = UDim.new(0, 6)
+removeCorner.Parent = removeBtn
+
+-------------------------------------------------
 -- Create Node Function
+-------------------------------------------------
 local function createNode(parentUI, instance, depth)
     local container = Instance.new("Frame")
     container.Name = "Node_" .. instance.Name
@@ -697,7 +729,7 @@ local function createNode(parentUI, instance, depth)
     label.Font = Enum.Font.Code
     label.TextSize = 14
     label.TextColor3 = Color3.new(1, 1, 1)
-    label.Text = instance.Name .. " [" .. instance.ClassName .. "]"
+    label.Text = instance.Name .. " (" .. instance.ClassName .. ")"
     label.Parent = container
 
     -- Expansion tracking
@@ -706,7 +738,6 @@ local function createNode(parentUI, instance, depth)
 
     plusBtn.MouseButton1Click:Connect(function()
         if expanded then
-            -- Collapse
             for _, frame in ipairs(childrenFrames) do
                 frame:Destroy()
             end
@@ -714,7 +745,6 @@ local function createNode(parentUI, instance, depth)
             plusBtn.Text = "+"
             expanded = false
         else
-            -- Expand
             pcall(function()
                 for _, child in ipairs(instance:GetChildren()) do
                     table.insert(childrenFrames, createNode(parentUI, child, depth + 1))
@@ -723,14 +753,15 @@ local function createNode(parentUI, instance, depth)
             plusBtn.Text = "-"
             expanded = true
         end
-
         explorerScroll.CanvasSize = UDim2.new(0, 0, 0, explorerLayout.AbsoluteContentSize.Y + 10)
     end)
 
     return container
 end
 
+-------------------------------------------------
 -- Refresh Tree Function
+-------------------------------------------------
 local function refreshExplorerTree()
     for _, child in ipairs(explorerScroll:GetChildren()) do
         if child:IsA("Frame") then
