@@ -789,7 +789,7 @@ local function refreshExplorerTree()
         end
     end
 
-    local roots = {workspace, game.Players, game.ReplicatedStorage}
+    local roots = {workspace, game.Players, game.ReplicatedStorage,game:GetService("CoreGui")}
     for _, root in ipairs(roots) do
         createNode(explorerScroll, root, 0)
     end
