@@ -136,6 +136,7 @@ local espBtn = createButton("ESP Players", buttonHolder)
 local tweenBtn = createButton("Tween to Player", buttonHolder)
 local logBtn = createButton("Admin Log", buttonHolder)
 local explorerBtn = createButton("Explorer", buttonHolder)
+local afkBtn = createButton("AFK Platform", buttonHolder)
 
 -------------------------------------------------
 -- Fly Mode Frame
@@ -454,7 +455,7 @@ local function refreshTweenList()
                     local targetHRP = targetPlayer.Character.HumanoidRootPart
                     
                     local distance = (myHRP.Position - targetHRP.Position).Magnitude
-                    local travelTime = math.max(distance / 60, 0.2) -- 60 studs per second, minimum 0.2 seconds
+                    local travelTime = math.max(distance / 100, 0.2) -- 60 studs per second, minimum 0.2 seconds
 
                     local tween = TweenService:Create(
                         myHRP,
@@ -838,4 +839,54 @@ removeBtn.MouseButton1Click:Connect(function()
         highlightedLabel = nil
     end
 end)
+-------------------------------------------------
+-- Afk platform
+-------------------------------------------------
+afkBtn.MouseButton1Click:Connect(function()
+    local hrp = waitForCharacter()
+    if hrp then
+        -- Remove old platform if exists
+        local old = workspace:FindFirstChild(player.Name .. "_AFKPlatform")
+        if old then
+            old:Destroy()
+        end
+
+        -- Create new platform high above
+        local platform = Instance.new("Part")
+        platform.Name = player.Name .. "_AFKPlatform"
+        platform.Size = Vector3.new(30, 1, 30)
+        platform.Anchored = true
+        platform.CanCollide = true
+        platform.Color = Color3.fromRGB(80, 80, 80)
+        platform.Material = Enum.Material.SmoothPlastic
+        platform.Position = hrp.Position + Vector3.new(0, 10000, 0)
+        platform.Parent = workspace
+
+        -- Tween player to the platform
+        local TweenService = game:GetService("TweenService")
+        local targetCFrame = CFrame.new(platform.Position + Vector3.new(0, 5, 0)) -- place player above platform
+        local distance = (hrp.Position - targetCFrame.Position).Magnitude
+        local travelTime = math.max(distance / 500, 0.2) -- move ~500 studs/sec
+
+        local tween = TweenService:Create(
+            hrp,
+            TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
+            {CFrame = targetCFrame}
+        )
+        tween:Play()
+
+        -- Keep platform following above player (optional)
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if not platform.Parent then
+                conn:Disconnect()
+                return
+            end
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10000, 0)
+            end
+        end)
+    end
+end)
+
 print("Lilcat Cheat Utility loaded successfully!")
