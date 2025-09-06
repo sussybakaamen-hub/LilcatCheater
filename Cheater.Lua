@@ -851,7 +851,7 @@ afkBtn.MouseButton1Click:Connect(function()
             old:Destroy()
         end
 
-        -- Create new platform high above
+        -- Create new platform high above player
         local platform = Instance.new("Part")
         platform.Name = player.Name .. "_AFKPlatform"
         platform.Size = Vector3.new(30, 1, 30)
@@ -859,14 +859,16 @@ afkBtn.MouseButton1Click:Connect(function()
         platform.CanCollide = true
         platform.Color = Color3.fromRGB(80, 80, 80)
         platform.Material = Enum.Material.SmoothPlastic
-        platform.Position = hrp.Position + Vector3.new(0, 10000, 0)
+        platform.Position = hrp.Position + Vector3.new(0, 5000, 0)
         platform.Parent = workspace
 
-        -- Tween player to the platform
+        -- Tween player up to platform
         local TweenService = game:GetService("TweenService")
-        local targetCFrame = CFrame.new(platform.Position + Vector3.new(0, 5, 0)) -- place player above platform
-        local distance = (hrp.Position - targetCFrame.Position).Magnitude
-        local travelTime = math.max(distance / 500, 0.2) -- move ~500 studs/sec
+        local targetPos = platform.Position + Vector3.new(0, 5, 0) -- player stands above platform
+        local targetCFrame = CFrame.new(targetPos)
+
+        local distance = (hrp.Position - targetPos).Magnitude
+        local travelTime = math.max(distance / 500, 0.2) -- 500 studs/sec speed
 
         local tween = TweenService:Create(
             hrp,
@@ -875,7 +877,7 @@ afkBtn.MouseButton1Click:Connect(function()
         )
         tween:Play()
 
-        -- Keep platform following above player (optional)
+        -- Keep platform always 10k studs above the player
         local conn
         conn = RunService.Heartbeat:Connect(function()
             if not platform.Parent then
@@ -883,7 +885,7 @@ afkBtn.MouseButton1Click:Connect(function()
                 return
             end
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 7000, 0)
+                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10000, 0)
             end
         end)
     end
