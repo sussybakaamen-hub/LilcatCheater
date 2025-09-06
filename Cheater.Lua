@@ -883,7 +883,7 @@ afkBtn.MouseButton1Click:Connect(function()
                 return
             end
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10000, 0)
+                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 7000, 0)
             end
         end)
     end
