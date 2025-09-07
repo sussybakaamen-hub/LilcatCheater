@@ -840,55 +840,68 @@ removeBtn.MouseButton1Click:Connect(function()
     end
 end)
 -------------------------------------------------
--- Afk platform
+-- AFK Sky Float Toggle
 -------------------------------------------------
+local isAfk = false
+local afkCoroutine -- store coroutine to stop it later
+
 afkBtn.MouseButton1Click:Connect(function()
     local hrp = waitForCharacter()
-    if hrp then
-        -- Remove old platform if exists
-        local old = workspace:FindFirstChild(player.Name .. "_AFKPlatform")
-        if old then
-            old:Destroy()
-        end
+    if not hrp then return end
 
-        -- Create new platform high above player
-        local platform = Instance.new("Part")
-        platform.Name = player.Name .. "_AFKPlatform"
-        platform.Size = Vector3.new(30, 1, 30)
-        platform.Anchored = true
-        platform.CanCollide = true
-        platform.Color = Color3.fromRGB(80, 80, 80)
-        platform.Material = Enum.Material.SmoothPlastic
-        platform.Position = hrp.Position + Vector3.new(0, 5000, 0)
-        platform.Parent = workspace
+    local TweenService = game:GetService("TweenService")
 
-        -- Tween player up to platform
-        local TweenService = game:GetService("TweenService")
-        local targetPos = platform.Position + Vector3.new(0, 5, 0) -- player stands above platform
-        local targetCFrame = CFrame.new(targetPos)
+    if not isAfk then
+        isAfk = true
 
-        local distance = (hrp.Position - targetPos).Magnitude
-        local travelTime = math.max(distance / 500, 0.2) -- 500 studs/sec speed
+        -- Starting sky position (5000 studs above current pos)
+        local startPos = hrp.Position + Vector3.new(0, 5000, 0)
+        hrp.CFrame = CFrame.new(startPos)
 
-        local tween = TweenService:Create(
-            hrp,
-            TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
-            {CFrame = targetCFrame}
-        )
-        tween:Play()
+        -- Waypoints for the player to float around
+        local radius = 100
+        local height = 5000
+        local speed = 20 -- bigger = slower movement
 
-        -- Keep platform always 10k studs above the player
-        local conn
-        conn = RunService.Heartbeat:Connect(function()
-            if not platform.Parent then
-                conn:Disconnect()
-                return
-            end
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10000, 0)
+        local points = {
+            Vector3.new(radius, height, 0),
+            Vector3.new(0, height, radius),
+            Vector3.new(-radius, height, 0),
+            Vector3.new(0, height, -radius),
+        }
+
+        -- Coroutine to loop tweening between waypoints
+        afkCoroutine = coroutine.create(function()
+            local i = 1
+            while isAfk and hrp.Parent do
+                local targetPos = startPos + points[i]
+                local targetCFrame = CFrame.new(targetPos)
+
+                local distance = (hrp.Position - targetPos).Magnitude
+                local travelTime = distance / speed
+
+                local tween = TweenService:Create(
+                    hrp,
+                    TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
+                    {CFrame = targetCFrame}
+                )
+                tween:Play()
+                tween.Completed:Wait()
+
+                i = i + 1
+                if i > #points then
+                    i = 1
+                end
             end
         end)
+        coroutine.resume(afkCoroutine)
+
+    else
+        -- Toggle off: stop AFK and let player move normally
+        isAfk = false
+        -- optionally teleport back to ground
+        local groundY = workspace.FallenPartsDestroyHeight + 5
+        hrp.CFrame = CFrame.new(hrp.Position.X, groundY, hrp.Position.Z)
     end
 end)
-
 print("Lilcat Cheat Utility loaded successfully!")
