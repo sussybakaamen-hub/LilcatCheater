@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LogService = game:GetService("LogService")
+local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 
@@ -18,14 +19,14 @@ local function waitForCharacter()
 end
 
 -- GUI Setup
-local oldgui = player:WaitForChild("PlayerGui"):FindFirstChild("LilcatCheat")
+local oldgui = CoreGui:FindFirstChild("LilcatCheat")
 if oldgui then
     oldgui:Destroy()
 end
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "LilcatCheat"
-gui.Parent = player:WaitForChild("PlayerGui")
+gui.Parent = CoreGui
 gui.ResetOnSpawn = false
 
 -- Colors
